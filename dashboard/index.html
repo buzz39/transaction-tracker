@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Transaction Tracker</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 12px; border: 1px solid #ccc; }
+    th { background: #f5f5f5; }
+  </style>
+</head>
+<body>
+  <h1>📊 Transaction Dashboard</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Date</th>
+        <th>Type</th>
+        <th>Amount</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="transactions"></tbody>
+  </table>
+
+  <script>
+    const API = 'https://sheetdb.io/api/v1/YOUR_API_KEY';
+    fetch(API)
+      .then(res => res.json())
+      .then(data => {
+        let rows = '';
+        data.forEach(t => {
+          rows += `<tr>
+            <td>${t.ID}</td>
+            <td>${t.Date}</td>
+            <td>${t.Type}</td>
+            <td>${t.Amount || ''}</td>
+            <td>${t.Status}</td>
+          </tr>`;
+        });
+        document.getElementById('transactions').innerHTML = rows;
+      });
+  </script>
+</body>
+</html>

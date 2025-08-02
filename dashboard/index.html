@@ -1,46 +1,353 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Transaction Tracker</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Log a Transaction</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 8px 12px; border: 1px solid #ccc; }
-    th { background: #f5f5f5; }
+    body { font-family: 'Inter', sans-serif; }
   </style>
 </head>
-<body>
-  <h1>📊 Transaction Dashboard</h1>
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Date</th>
-        <th>Type</th>
-        <th>Amount</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody id="transactions"></tbody>
-  </table>
-
+<body class="bg-gradient-to-br from-indigo-50 to-purple-100 min-h-screen flex flex-col">
+  <div id="loginSection" class="max-w-md w-full mx-auto mt-14 mb-4 bg-white/90 rounded-2xl shadow-lg p-10 backdrop-blur-md" style="display:none;">
+    <h2 class="text-2xl font-bold text-indigo-700 text-center mb-8 tracking-tight">Login</h2>
+    <form id="loginForm" autocomplete="off" class="space-y-5">
+      <label for="loginUser" class="block font-semibold text-gray-700 tracking-wide">Username</label>
+      <input type="text" id="loginUser" required placeholder="Enter username" class="w-full px-5 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-gray-50 shadow-sm">
+      <label for="loginPass" class="block font-semibold text-gray-700 tracking-wide">Password</label>
+      <input type="password" id="loginPass" required placeholder="Enter password" class="w-full px-5 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-gray-50 shadow-sm">
+      <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-md uppercase tracking-wider transition">Login</button>
+    </form>
+    <div class="msg text-center mt-5 text-base min-h-[1.2em]" id="loginMsg"></div>
+  </div>
+  <div id="mainSection" style="display:none;">
+    <div class="max-w-md w-full mx-auto mt-4">
+      <div class="flex border-b border-gray-300">
+          <button id="tab-orient" class="tab-btn flex-1 py-2 px-4 text-center font-semibold text-indigo-700 border-b-2 border-indigo-700">Orient</button>
+          <button id="tab-kapoor" class="tab-btn flex-1 py-2 px-4 text-center font-semibold text-gray-500 border-b-2 border-transparent hover:border-gray-400">Kapoor</button>
+      </div>
+    </div>
+    <div class="max-w-md w-full mx-auto flex flex-col items-end mt-2">
+      <div class="user-info text-indigo-700 font-semibold text-sm mb-1" id="userInfo"></div>
+      <button class="logout-btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow transition mb-2 uppercase tracking-wider" id="logoutBtn">Logout</button>
+    </div>
+    <div id="formContainer" class="container max-w-md w-full mx-auto bg-white/90 rounded-2xl shadow-lg p-10 mt-2 mb-6 backdrop-blur-md">
+      <h2 class="text-2xl font-bold text-indigo-700 text-center mb-8 tracking-tight">Log a Transaction</h2>
+      <form id="transactionForm" autocomplete="off" class="space-y-5">
+        <input type="hidden" id="type" value="Invest">
+        <label for="amount" class="block font-semibold text-gray-700 tracking-wide">Amount</label>
+        <input type="number" id="amount" min="1" required placeholder="Enter amount" class="w-full px-5 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-gray-50 shadow-sm">
+        <label for="note" class="block font-semibold text-gray-700 tracking-wide">Note <span class="text-gray-400 font-normal">(optional)</span></label>
+        <textarea id="note" rows="2" placeholder="Add a note or leave blank" class="w-full px-5 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-gray-50 shadow-sm"></textarea>
+        <input type="hidden" id="status" value="Pending">
+        <label for="date" class="block font-semibold text-gray-700 tracking-wide">Date</label>
+        <input type="date" id="date" required class="w-full px-5 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-gray-50 shadow-sm">
+        <button type="submit" id="submitBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg shadow-md uppercase tracking-wider transition">Submit</button>
+      </form>
+      <div class="msg text-center mt-5 text-base min-h-[1.2em]" id="msg"></div>
+    </div>
+    <div class="table-container max-w-2xl w-full mx-auto bg-white/90 rounded-2xl shadow-lg p-8 mb-8 backdrop-blur-md">
+      <h2 class="text-xl font-bold text-indigo-700 text-center mb-3 tracking-tight">Recent Transactions</h2>
+      <div class="text-center text-gray-500 text-sm mb-3">
+        Only the 10 most recent transactions are shown below.<br>
+        <a id="historyLink" href="history.html?sheet=orient" class="text-indigo-600 underline font-semibold hover:text-indigo-800">View Full History</a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm mt-2">
+          <thead>
+            <tr class="bg-indigo-50">
+              <th class="py-3 px-2 font-semibold">ID</th>
+              <th class="py-3 px-2 font-semibold">Date</th>
+              <th class="py-3 px-2 font-semibold">Type</th>
+              <th class="py-3 px-2 font-semibold">Amount</th>
+              <th class="py-3 px-2 font-semibold">Status</th>
+              <th class="py-3 px-2 font-semibold">Note</th>
+              <th id="actionHeader" style="display:none;" class="py-3 px-2 font-semibold">Action</th>
+            </tr>
+          </thead>
+          <tbody id="transactions"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
   <script>
-    const API = 'https://sheetdb.io/api/v1/YOUR_API_KEY';
-    fetch(API)
-      .then(res => res.json())
-      .then(data => {
+    // Hardcoded users
+    const USERS = [
+      { username: 'test1', password: 'pass1', role: 'investor' },
+      { username: 'test2', password: 'pass2', role: 'other' }
+    ];
+    const SHEETS = {
+      'kapoor': { api: 'https://sheetdb.io/api/v1/zbwqfyz53iv9d' },
+      'orient': { api: 'https://sheetdb.io/api/v1/tylhr7mwtca33' }
+    };
+    let currentSheet = 'orient';
+
+    function getApi() {
+      return SHEETS[currentSheet].api;
+    }
+    function getPatchApi() {
+      return SHEETS[currentSheet].api; // Assuming patch is same as api
+    }
+    const form = document.getElementById('transactionForm');
+    const msg = document.getElementById('msg');
+    const submitBtn = document.getElementById('submitBtn');
+    const transactionsTbody = document.getElementById('transactions');
+    const loginSection = document.getElementById('loginSection');
+    const mainSection = document.getElementById('mainSection');
+    const loginForm = document.getElementById('loginForm');
+    const loginMsg = document.getElementById('loginMsg');
+    const userInfo = document.getElementById('userInfo');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const formContainer = document.getElementById('formContainer');
+    const actionHeader = document.getElementById('actionHeader');
+    const tabKapoor = document.getElementById('tab-kapoor');
+    const tabOrient = document.getElementById('tab-orient');
+    const historyLink = document.getElementById('historyLink');
+    historyLink.onclick = () => {
+      localStorage.setItem('historySheet', currentSheet);
+    };
+    function setActiveTab(sheetName) {
+      if (sheetName === 'kapoor') {
+        tabKapoor.className = 'tab-btn flex-1 py-2 px-4 text-center font-semibold text-indigo-700 border-b-2 border-indigo-700';
+        tabOrient.className = 'tab-btn flex-1 py-2 px-4 text-center font-semibold text-gray-500 border-b-2 border-transparent hover:border-gray-400';
+      } else {
+        tabOrient.className = 'tab-btn flex-1 py-2 px-4 text-center font-semibold text-indigo-700 border-b-2 border-indigo-700';
+        tabKapoor.className = 'tab-btn flex-1 py-2 px-4 text-center font-semibold text-gray-500 border-b-2 border-transparent hover:border-gray-400';
+      }
+    }
+
+    function switchSheet(sheetName) {
+      currentSheet = sheetName;
+      setActiveTab(sheetName);
+      historyLink.href = `history.html?sheet=${sheetName}`;
+      const user = getStoredUser();
+      if (user) {
+        fetchTransactions(user);
+      }
+    }
+
+    tabKapoor.onclick = () => switchSheet('kapoor');
+    tabOrient.onclick = () => switchSheet('orient');
+
+    // Set default date to today
+    function setToday() {
+      document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    }
+
+    function showMsg(text, type) {
+      msg.textContent = text;
+      msg.className = 'msg ' + type;
+    }
+
+    function setLoading(isLoading) {
+      submitBtn.disabled = isLoading;
+      if (isLoading) {
+        showMsg('Submitting...', 'loading');
+      }
+    }
+
+    async function fetchTransactions(user) {
+      console.log(`Fetching transactions from: ${getApi()}`);
+      transactionsTbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+      try {
+        const res = await fetch(getApi());
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          transactionsTbody.innerHTML = '<tr><td colspan="7">No transactions found.</td></tr>';
+          return;
+        }
+        // Show last 10, most recent first
+        const last10 = data.slice(-10).reverse();
         let rows = '';
-        data.forEach(t => {
+        last10.forEach(t => {
           rows += `<tr>
-            <td>${t.ID}</td>
-            <td>${t.Date}</td>
-            <td>${t.Type}</td>
+            <td>${t.ID || ''}</td>
+            <td>${t.Date || ''}</td>
+            <td>${t.Type || ''}</td>
             <td>${t.Amount || ''}</td>
-            <td>${t.Status}</td>
-          </tr>`;
+            <td>${t.Status || ''}</td>
+            <td>${t.Notes || ''}</td>`;
+          if (user.role === 'other') {
+            // Only show Confirm button for pending Invest transactions
+            if (t.Type === 'Invest' && t.Status === 'Pending' && t.Timestamp) {
+              rows += `<td><button class=\"confirm-btn\" onclick=\"confirmTransaction('${t.Timestamp}')\">Confirm</button></td>`;
+            } else {
+              rows += '<td></td>';
+            }
+          } else if (user.role === 'investor') {
+            // Only show Confirm button for pending Return transactions
+            if (t.Type === 'Return' && t.Status === 'Pending' && t.Timestamp) {
+              rows += `<td><button class=\"confirm-btn\" onclick=\"confirmTransaction('${t.Timestamp}')\">Confirm</button></td>`;
+            } else {
+              rows += '<td></td>';
+            }
+          }
+          rows += '</tr>';
         });
-        document.getElementById('transactions').innerHTML = rows;
-      });
+        transactionsTbody.innerHTML = rows;
+        // Show/hide Action header
+        actionHeader.style.display = user.role === 'other' || user.role === 'investor' ? '' : 'none';
+      } catch (err) {
+        console.error('Error fetching transactions:', err);
+        transactionsTbody.innerHTML = `<tr><td colspan="7">Failed to load transactions. See console for details.</td></tr>`;
+      }
+    }
+
+    // Expose confirmTransaction globally for inline onclick
+    window.confirmTransaction = async function(timestamp) {
+      if (!timestamp) return;
+      // Find the row by Timestamp and update Status to Completed
+      try {
+        const patchData = { data: { Status: 'Completed' } };
+        const res = await fetch(`${getPatchApi()}/Timestamp/${encodeURIComponent(timestamp)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patchData)
+        });
+        if (res.ok) {
+          alert('Transaction confirmed!');
+          const user = getStoredUser();
+          await fetchTransactions(user);
+        } else {
+          alert('Failed to confirm transaction.');
+        }
+      } catch (err) {
+        console.error('Error confirming transaction:', err);
+        alert('Error confirming transaction. See console for details.');
+      }
+    };
+
+    // Login logic
+    function showLogin() {
+      loginSection.style.display = '';
+      mainSection.style.display = 'none';
+      loginMsg.textContent = '';
+      loginForm.reset();
+    }
+    function showMain(user) {
+      loginSection.style.display = 'none';
+      mainSection.style.display = '';
+      userInfo.textContent = `Logged in as: ${user.username} (${user.role})`;
+      setActiveTab(currentSheet);
+      historyLink.href = `history.html?sheet=${currentSheet}`;
+      setToday();
+      fetchTransactions(user);
+      // Role-based UI
+      if (user.role === 'investor') {
+        formContainer.style.display = '';
+        // Lock type/status fields for Invest
+        document.getElementById('type').value = 'Invest';
+        document.getElementById('type').type = 'hidden';
+        document.getElementById('status').value = 'Pending';
+        document.getElementById('status').type = 'hidden';
+        document.getElementById('amount').disabled = false;
+        document.getElementById('note').disabled = false;
+        document.getElementById('date').disabled = false;
+        submitBtn.disabled = false;
+      } else {
+        // Show form for Return only for test2
+        formContainer.style.display = '';
+        document.getElementById('type').value = 'Return';
+        document.getElementById('type').type = 'hidden';
+        document.getElementById('status').value = 'Pending';
+        document.getElementById('status').type = 'hidden';
+        document.getElementById('amount').disabled = false;
+        document.getElementById('note').disabled = false;
+        document.getElementById('date').disabled = false;
+        submitBtn.disabled = false;
+      }
+    }
+    function getStoredUser() {
+      try {
+        return JSON.parse(localStorage.getItem('loggedUser'));
+      } catch { return null; }
+    }
+    function storeUser(user) {
+      localStorage.setItem('loggedUser', JSON.stringify(user));
+    }
+    function clearUser() {
+      localStorage.removeItem('loggedUser');
+    }
+    loginForm.onsubmit = (e) => {
+      e.preventDefault();
+      const username = document.getElementById('loginUser').value.trim();
+      const password = document.getElementById('loginPass').value;
+      const user = USERS.find(u => u.username === username && u.password === password);
+      if (user) {
+        storeUser(user);
+        showMain(user);
+      } else {
+        loginMsg.textContent = 'Invalid username or password';
+        loginMsg.className = 'msg error';
+      }
+    };
+    logoutBtn.onclick = () => {
+      clearUser();
+      showLogin();
+    };
+    // On load
+    const storedUser = getStoredUser();
+    if (storedUser) {
+      showMain(storedUser);
+    } else {
+      showLogin();
+    }
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      showMsg('', '');
+      setLoading(true);
+      const type = document.getElementById('type').value;
+      const amount = document.getElementById('amount').value.trim();
+      const note = document.getElementById('note').value.trim();
+      const status = document.getElementById('status').value;
+      const date = document.getElementById('date').value;
+      if (!amount || isNaN(amount) || Number(amount) <= 0) {
+        setLoading(false);
+        showMsg('Please enter a valid amount.', 'error');
+        document.getElementById('amount').focus();
+        return;
+      }
+      if (!date) {
+        setLoading(false);
+        showMsg('Please select a date.', 'error');
+        document.getElementById('date').focus();
+        return;
+      }
+      const data = {
+        data: {
+          Date: date,
+          Timestamp: new Date().toISOString(),
+          Type: type,
+          Amount: amount,
+          'Return Amount': '',
+          Status: status,
+          Notes: note
+        }
+      };
+      try {
+        const res = await fetch(getApi(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          showMsg('✅ Transaction logged successfully!', 'success');
+          form.reset();
+          setToday();
+          const user = getStoredUser();
+          await fetchTransactions(user);
+        } else {
+          throw new Error('Failed to log transaction.');
+        }
+      } catch (err) {
+        showMsg('❌ ' + err.message, 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
   </script>
 </body>
 </html>

@@ -11,6 +11,7 @@
     body { font-family: 'Inter', sans-serif; }
     #historySection { display: none; }
   </style>
+  <link rel="manifest" href="manifest.json">
 </head>
 <body class="bg-gradient-to-br from-indigo-50 to-purple-100 min-h-screen flex flex-col">
   <div id="loginSection" class="max-w-md w-full mx-auto mt-14 mb-4 bg-white/90 rounded-2xl shadow-lg p-10 backdrop-blur-md" style="display:none;">
@@ -409,6 +410,17 @@
         setLoading(false);
       }
     };
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then(registration => {
+          console.log('ServiceWorker registration successful with scope: ', registration.scope);
+        }, err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+      });
+    }
   </script>
 </body>
 </html>

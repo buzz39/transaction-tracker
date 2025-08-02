@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Log a Transaction</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="config.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
+    #historySection { display: none; }
   </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 to-purple-100 min-h-screen flex flex-col">
@@ -52,7 +54,7 @@
       <h2 class="text-xl font-bold text-indigo-700 text-center mb-3 tracking-tight">Recent Transactions</h2>
       <div class="text-center text-gray-500 text-sm mb-3">
         Only the 10 most recent transactions are shown below.<br>
-        <a id="historyLink" href="history.html?sheet=orient" class="text-indigo-600 underline font-semibold hover:text-indigo-800">View Full History</a>
+        <button id="toggleHistoryBtn" class="text-indigo-600 underline font-semibold hover:text-indigo-800">View Full History</button>
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm mt-2">
@@ -72,23 +74,33 @@
       </div>
     </div>
   </div>
+  <div id="historySection" class="container max-w-4xl w-full mx-auto bg-white/90 rounded-2xl shadow-lg p-10 mt-8 mb-8 backdrop-blur-md">
+    <h2 id="historyTitle" class="text-3xl font-bold text-indigo-700 text-center mb-6 tracking-tight">Transaction History</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm mt-2">
+        <thead>
+          <tr class="bg-indigo-50">
+            <th class="py-3 px-2 font-semibold">ID</th>
+            <th class="py-3 px-2 font-semibold">Date</th>
+            <th class="py-3 px-2 font-semibold">Timestamp</th>
+            <th class="py-3 px-2 font-semibold">Type</th>
+            <th class="py-3 px-2 font-semibold">Amount</th>
+            <th class="py-3 px-2 font-semibold">Status</th>
+            <th class="py-3 px-2 font-semibold">Note</th>
+          </tr>
+        </thead>
+        <tbody id="history-transactions">
+            <tr><td colspan="7" class="text-center p-4">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
   <script>
-    // Hardcoded users
-    const USERS = [
-      { username: 'test1', password: 'pass1', role: 'investor' },
-      { username: 'test2', password: 'pass2', role: 'other' }
-    ];
-    const SHEETS = {
-      'kapoor': { api: 'https://sheetdb.io/api/v1/zbwqfyz53iv9d' },
-      'orient': { api: 'https://sheetdb.io/api/v1/tylhr7mwtca33' }
-    };
-    let currentSheet = 'orient';
+    const { sheets: SHEETS, users: USERS, defaultSheet } = AppConfig;
+    let currentSheet = defaultSheet;
 
     function getApi() {
       return SHEETS[currentSheet].api;
-    }
-    function getPatchApi() {
-      return SHEETS[currentSheet].api; // Assuming patch is same as api
     }
     const form = document.getElementById('transactionForm');
     const msg = document.getElementById('msg');
@@ -104,10 +116,11 @@
     const actionHeader = document.getElementById('actionHeader');
     const tabKapoor = document.getElementById('tab-kapoor');
     const tabOrient = document.getElementById('tab-orient');
-    const historyLink = document.getElementById('historyLink');
-    historyLink.onclick = () => {
-      localStorage.setItem('historySheet', currentSheet);
-    };
+    const toggleHistoryBtn = document.getElementById('toggleHistoryBtn');
+    const historySection = document.getElementById('historySection');
+    const historyTbody = document.getElementById('history-transactions');
+    const historyTitle = document.getElementById('historyTitle');
+
     function setActiveTab(sheetName) {
       if (sheetName === 'kapoor') {
         tabKapoor.className = 'tab-btn flex-1 py-2 px-4 text-center font-semibold text-indigo-700 border-b-2 border-indigo-700';
@@ -121,10 +134,12 @@
     function switchSheet(sheetName) {
       currentSheet = sheetName;
       setActiveTab(sheetName);
-      historyLink.href = `history.html?sheet=${sheetName}`;
       const user = getStoredUser();
       if (user) {
         fetchTransactions(user);
+      }
+      if (historySection.style.display !== 'none') {
+        fetchHistory();
       }
     }
 
@@ -201,7 +216,7 @@
       // Find the row by Timestamp and update Status to Completed
       try {
         const patchData = { data: { Status: 'Completed' } };
-        const res = await fetch(`${getPatchApi()}/Timestamp/${encodeURIComponent(timestamp)}`, {
+        const res = await fetch(`${getApi()}/Timestamp/${encodeURIComponent(timestamp)}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(patchData)
@@ -210,12 +225,59 @@
           alert('Transaction confirmed!');
           const user = getStoredUser();
           await fetchTransactions(user);
+          if (historySection.style.display !== 'none') {
+            fetchHistory();
+          }
         } else {
           alert('Failed to confirm transaction.');
         }
       } catch (err) {
         console.error('Error confirming transaction:', err);
         alert('Error confirming transaction. See console for details.');
+      }
+    };
+
+    async function fetchHistory() {
+      const sheetName = currentSheet;
+      if (!sheetName || !SHEETS[sheetName]) {
+          historyTbody.innerHTML = '<tr><td colspan="7" class="text-center p-4 text-red-500">Invalid sheet specified.</td></tr>';
+          return;
+      }
+      const titleName = sheetName.charAt(0).toUpperCase() + sheetName.slice(1);
+      historyTitle.textContent = `${titleName} - Transaction History`;
+      try {
+          const res = await fetch(SHEETS[sheetName].api);
+          const data = await res.json();
+          if (!Array.isArray(data) || data.length === 0) {
+              historyTbody.innerHTML = '<tr><td colspan="7" class="text-center p-4">No transactions found.</td></tr>';
+              return;
+          }
+          const allTransactions = data.reverse();
+          let rows = '';
+          allTransactions.forEach(t => {
+              rows += `<tr class="border-b">
+                  <td class="p-2">${t.ID || ''}</td>
+                  <td class="p-2">${t.Date || ''}</td>
+                  <td class="p-2">${t.Timestamp || ''}</td>
+                  <td class="p-2">${t.Type || ''}</td>
+                  <td class="p-2">${t.Amount || ''}</td>
+                  <td class="p-2">${t.Status || ''}</td>
+                  <td class="p-2">${t.Notes || ''}</td>
+              </tr>`;
+          });
+          historyTbody.innerHTML = rows;
+      } catch (err) {
+          console.error('Error fetching history:', err);
+          historyTbody.innerHTML = '<tr><td colspan="7" class="text-center p-4 text-red-500">Failed to load transaction history.</td></tr>';
+      }
+    }
+
+    toggleHistoryBtn.onclick = () => {
+      const isHidden = historySection.style.display === 'none';
+      historySection.style.display = isHidden ? '' : 'none';
+      toggleHistoryBtn.textContent = isHidden ? 'Hide Full History' : 'View Full History';
+      if (isHidden) {
+        fetchHistory();
       }
     };
 
@@ -231,7 +293,6 @@
       mainSection.style.display = '';
       userInfo.textContent = `Logged in as: ${user.username} (${user.role})`;
       setActiveTab(currentSheet);
-      historyLink.href = `history.html?sheet=${currentSheet}`;
       setToday();
       fetchTransactions(user);
       // Role-based UI
